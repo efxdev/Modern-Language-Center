@@ -45,7 +45,7 @@ const DISTRACTOR_BANK=[
 const state={
   studentName:"",set:[],index:0,score:0,answers:[],startAt:0,endAt:0,remaining:300,
   timerId:null,testId:"",firebase:null,auth:null,db:null,authReady:false,currentUser:null,
-  adminApp:null,adminAuth:null,adminDb:null,admin:false,adminResults:[],adminBusy:false
+  admin:false,adminResults:[],adminBusy:false
 };
 const $=id=>document.getElementById(id);
 const views=["welcomeView","instructionView","examView","resultView","adminView"];
@@ -118,13 +118,10 @@ async function initFirebase(){
     state.auth=getAuth(state.firebase);
     state.db=getFirestore(state.firebase);
 
-    // Keep the student Anonymous session and Admin Email/Password session
-    // completely separate. This prevents an Admin sign-in from replacing the
-    // anonymous identity used to submit exam results.
-    state.adminApp=initializeApp(firebaseConfig,"mlc-admin");
-    state.adminAuth=getAuth(state.adminApp);
-    state.adminDb=getFirestore(state.adminApp);
-
+    // Use ONE Auth + Firestore context for both roles. Firebase Security Rules
+    // evaluate request.auth from the active Auth instance, so switching the
+    // same session from anonymous student -> admin email/password keeps the
+    // Firestore authorization context consistent.
     onAuthStateChanged(state.auth,user=>{state.currentUser=user;state.authReady=true;});
     await ensureAnonymousAuth();
   }catch(error){console.error("Firebase init failed",error);toast("Firebase connection failed. Local mode is active.");}
@@ -192,9 +189,11 @@ function renderAdminTable(){
   table.querySelectorAll(".admin-delete-btn").forEach(b=>b.addEventListener("click",()=>deleteAdminResult(b.dataset.id)));
 }
 async function loadAdminResults(){
-  if(!state.adminDb){state.adminResults=readLocalResults();renderAdminTable();return;}
+  if(!state.db||!state.auth||!state.currentUser||state.currentUser.email?.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){
+    state.adminResults=[];renderAdminTable();toast("Admin authentication is not ready.");return;
+  }
   try{
-    const snap=await getDocs(collection(state.adminDb,"examResults"));
+    const snap=await getDocs(collection(state.db,"examResults"));
     const cloud=snap.docs.map(d=>({docId:d.id,...d.data()}));
     const local=readLocalResults().map(r=>({...r,docId:r.docId||""}));
     const byKey=new Map();
@@ -209,22 +208,22 @@ function openEditModal(id){
 }
 function closeEditModal(){$("editModal")?.classList.add("hidden");}
 async function saveAdminEdit(){
-  const id=$("editDocId").value;if(!id||!state.adminDb)return;
+  const id=$("editDocId").value;if(!id||!state.db)return;
   const name=$("editStudentName").value.trim();const score=Number($("editScore").value);const time=secondsFromTime($("editTime").value);
   if(name.length<2||name.length>32){toast("Student name must be 2–32 characters.");return;}
   if(!Number.isInteger(score)||score<0||score>10){toast("Score must be between 0 and 10.");return;}
   if(time<0||time>300){toast("EXAM TIME must be between 0:00 and 5:00.");return;}
   try{
-    await updateDoc(doc(state.adminDb,"examResults",id),{name,score,total:10,time,passed:score>=6});
+    await updateDoc(doc(state.db,"examResults",id),{name,score,total:10,time,passed:score>=6});
     closeEditModal();await loadAdminResults();toast("Exam result updated.");
   }catch(error){console.error(error);toast("Update failed. Please try again.");}
 }
 async function deleteAdminResult(id){
-  if(!id||!state.adminDb)return;
+  if(!id||!state.db)return;
   const r=state.adminResults.find(x=>x.docId===id);if(!r)return;
   const label=r.testId||r.name||id;
   if(!window.confirm(`Delete this exam result?\n\n${label}\n\nThis cannot be undone.`))return;
-  try{await deleteDoc(doc(state.adminDb,"examResults",id));await loadAdminResults();toast("Exam result deleted.");}
+  try{await deleteDoc(doc(state.db,"examResults",id));await loadAdminResults();toast("Exam result deleted.");}
   catch(error){console.error(error);toast("Delete failed. Please try again.");}
 }
 window.mlcOpenAdmin=function(){
@@ -235,15 +234,25 @@ window.mlcCloseAdmin=function(){$("adminModal")?.classList.add("hidden");if($("a
 window.mlcAdminLogin=async function(){
   const input=$("adminPassword"),err=$("adminError"),pass=(input?.value||"").trim();
   if(!pass){if(err)err.textContent="Password required.";return false;}
-  if(!state.adminAuth){if(err)err.textContent="Firebase is not ready.";return false;}
+  if(!state.auth||!state.db){if(err)err.textContent="Firebase is not ready.";return false;}
   try{
-    const cred=await signInWithEmailAndPassword(state.adminAuth,ADMIN_EMAIL,pass);
+    // End the anonymous student session before authenticating the Admin.
+    // Firestore now sees the same active Auth user and the Admin rules apply.
+    if(state.currentUser) await signOut(state.auth);
+    const cred=await signInWithEmailAndPassword(state.auth,ADMIN_EMAIL,pass);
     if(!cred.user.email||cred.user.email.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){throw new Error("Not an admin account");}
-    state.admin=true;if(input)input.value="";window.mlcCloseAdmin();showView("adminView");await loadAdminResults();return false;
-  }catch(error){console.error(error);if(err)err.textContent="Incorrect admin password or Admin account is not configured.";if(input){input.select();input.focus();}return false;}
+    state.currentUser=cred.user;state.admin=true;if(input)input.value="";window.mlcCloseAdmin();showView("adminView");await loadAdminResults();return false;
+  }catch(error){
+    console.error("Admin login failed",error);
+    try{await signInAnonymously(state.auth);}catch(e){console.error("Anonymous re-auth failed",e);}
+    const code=error?.code||"auth/unknown-error";
+    if(err)err.textContent=`Firebase: ${code}`;
+    if(input){input.select();input.focus();}
+    return false;
+  }
 };
 window.mlcAdminLogout=async function(){
-  try{if(state.adminAuth)await signOut(state.adminAuth);}catch(e){console.error(e);}state.admin=false;state.adminResults=[];await ensureAnonymousAuth();showView("welcomeView");return false;
+  try{if(state.auth)await signOut(state.auth);}catch(e){console.error(e);}state.admin=false;state.adminResults=[];await ensureAnonymousAuth();showView("welcomeView");return false;
 };
 window.mlcRefreshAdmin=()=>loadAdminResults();
 

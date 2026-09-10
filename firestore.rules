@@ -3,20 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "admin@mlc.local"
-        && request.auth.token.firebase.sign_in_provider == "password";
+        && request.auth.token.email == "admin@mlc.local";
     }
 
-    function isAnonymousStudent() {
-      return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == "anonymous";
-    }
-
-    match /examResults/{resultId} {
-      // Students may submit a result created by this browser session only.
-      // Students cannot read, update, or delete results.
-      allow create: if isAnonymousStudent()
-        && request.resource.data.uid == request.auth.uid
+    function validResult() {
+      return request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll([
           "uid", "name", "score", "total", "time",
           "submittedAt", "autoSubmitted"
@@ -31,8 +22,14 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 2
         && request.resource.data.name.size() <= 32;
+    }
 
-      // Only the authenticated Admin account can view, edit, or delete past exams.
+    match /examResults/{resultId} {
+      // A signed-in student browser may create its own result document.
+      // The document UID must match the authenticated UID.
+      allow create: if request.auth != null && validResult();
+
+      // Only the Firebase Admin account can view/edit/delete past results.
       allow read, update, delete: if isAdmin();
     }
   }
