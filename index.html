@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b16">
+<title>Modern Language Center — Korean Class Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<div class="hangul hangul-a">한글</div><div class="hangul hangul-b">한국어</div>
+
+<main id="app" class="app-shell">
+<section id="welcomeView" class="view active">
+  <div class="brand-mark"><div class="taegeuk"></div><div><div class="brand-korean">현대 언어 센터</div><div class="brand-name">MODERN LANGUAGE CENTER</div></div></div>
+  <div class="hero-card glass">
+    <div class="hero-badge">KOREAN CLASS TEST</div>
+    <h1 class="welcome-title">안녕하세요 🇰🇷</h1>
+    <label class="field-label" for="studentName">학생 이름 · শিক্ষার্থীর নাম</label>
+    <input id="studentName" class="name-input" maxlength="32" autocomplete="name" placeholder="আপনার নাম লিখুন / 이름을 입력하세요">
+    <button id="startBtn" class="primary-btn" disabled><span>시험 시작하기</span><small>পরীক্ষা শুরু করুন</small><b>→</b></button>
+    <button type="button" id="mlc-admin-btn" onclick="window.mlcOpenAdmin && window.mlcOpenAdmin(); return false;">관리자 패널 · Admin Panel</button>
+    <div class="footer-note">Designed &amp; Developed by <strong>MAHAMUD EFX</strong></div>
+  </div>
+</section>
+
+<section id="instructionView" class="view">
+  <div class="top-brand">MODERN LANGUAGE CENTER <span>•</span> 한국어</div>
+  <div class="instruction-card glass">
+    <div class="mini-icon">⌛</div><div class="hero-badge">READY CHECK</div>
+    <h2>시험 준비가 되셨습니까?</h2><p class="bn">আপনি কি পরীক্ষার জন্য প্রস্তুত?</p>
+    <div class="rules">
+      <div><strong>10</strong><span>문제<br><em>প্রশ্ন</em></span></div>
+      <div><strong>05:00</strong><span>시간<br><em>সময়</em></span></div>
+      <div><strong>→</strong><span>한 방향<br><em>একদিকেই এগোবেন</em></span></div>
+    </div>
+    <div class="notice"><strong>천천히 생각하고 신중하게 답하세요.</strong><span>ভালোভাবে ভেবে উত্তর দিন। একটি প্রশ্নের উত্তর দেওয়ার পর আগের প্রশ্নে ফিরে যাওয়া যাবে না। সময় শেষ হলে পরীক্ষা স্বয়ংক্রিয়ভাবে জমা হবে।</span></div>
+    <button id="readyBtn" class="primary-btn"><span>시험 시작</span><small>পরীক্ষা শুরু করুন</small><b>→</b></button>
+  </div>
+  <div class="footer-note">Designed &amp; Developed by <strong>MAHAMUD EFX</strong></div>
+</section>
+
+<section id="examView" class="view">
+<header class="exam-header glass"><div><div class="top-brand">MODERN LANGUAGE CENTER</div><div class="student-chip"><span id="studentDisplay"></span></div></div>
+<div class="timer-wrap"><span>남은 시간 · বাকি সময়</span><strong id="timer">05:00</strong></div></header>
+<div class="progress-row"><span id="progressText">Question 01 / 10</span><div class="progress-track"><div id="progressBar" class="progress-bar"></div></div></div>
+<article class="question-card glass"><div class="q-number" id="qNumber">01</div><div class="question-korean" id="questionText"></div><div id="options" class="options"></div></article>
+<div class="exam-footer"><span>한 번 답하면 이전 문제로 돌아갈 수 없습니다.</span><button id="nextBtn" class="next-btn" disabled><span id="nextKorean">다음 문제</span><b>→</b></button></div>
+</section>
+
+<section id="resultView" class="view">
+<div class="result-card glass" id="resultCard"><div class="result-glow"></div>
+<div class="result-kicker">MODERN LANGUAGE CENTER</div><div class="result-title" id="resultTitle">시험 결과</div><div class="result-sub" id="resultSub">আপনার পরীক্ষার ফলাফল</div>
+<div class="score-ring" id="scoreRing"><div><strong id="score">0</strong><span>/ 10</span></div></div>
+<div class="result-meta"><div><span>학생 · শিক্ষার্থী</span><strong id="resultName"></strong></div><div><span>EXAM TIME</span><strong id="resultTime"></strong></div><div><span>Test ID</span><strong id="resultId"></strong></div></div>
+<div class="message-box"><strong id="resultMessageKo"></strong><span id="resultMessageBn"></span></div>
+
+</div><div class="footer-note">Designed &amp; Developed by <strong>MAHAMUD EFX</strong></div>
+</section>
+
+<section id="adminView" class="view">
+<div class="top-brand">MODERN LANGUAGE CENTER <span>•</span> ADMIN</div>
+<div class="admin-card glass">
+<div class="hero-badge">TEACHER DASHBOARD</div><h2>관리자 패널</h2><p class="bn">শিক্ষক / অ্যাডমিন প্যানেল</p>
+<div class="stats" id="stats"></div>
+<div class="admin-toolbar"><input id="resultSearch" class="name-input" placeholder="Student name / Test ID search"><button id="adminRefresh" type="button" class="secondary-btn" onclick="location.reload()">새로고침</button><button id="adminLogout" type="button" class="danger-btn" onclick="mlcAdminLogout()">로그아웃</button></div>
+<div id="adminTableWrap" class="table-wrap"></div>
+<div class="admin-note">Results are loaded from Firebase Firestore when configured. GitHub preview falls back to this browser's local results.</div>
+</div><div class="footer-note">Designed &amp; Developed by <strong>MAHAMUD EFX</strong></div>
+</section>
+</main>
+
+<div id="exitModal" class="modal hidden"><div class="modal-card glass"><div class="mini-icon">⚠</div><h3>시험을 종료하시겠습니까?</h3><p>আপনি কি পরীক্ষা থেকে বের হতে চান?</p><small>현재 진행 중인 시험은 제출되지 않습니다.</small><div class="modal-actions"><button id="stayBtn" class="secondary-btn">계속하기 · চালিয়ে যান</button><button id="leaveBtn" class="danger-btn">나가기 · বের হয়ে যান</button></div></div></div>
+
+<div id="adminModal" class="modal hidden"><div class="modal-card glass"><div class="mini-icon">🔐</div><h3>관리자 인증</h3><p>অ্যাডমিন প্যানেলে প্রবেশের জন্য পাসওয়ার্ড দিন</p><input id="adminPassword" class="name-input" type="password" autocomplete="current-password" placeholder="관리자 비밀번호"><div class="modal-actions"><button id="adminCancel" type="button" class="secondary-btn" onclick="mlcCloseAdmin()">취소 · বাতিল</button><button id="adminLogin" type="button" class="primary-btn compact" onclick="mlcAdminLogin()"><span>확인 · Verify</span><b>→</b></button></div><small id="adminError" class="error-text"></small></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+
+<script>
+(function(){
+  const ADMIN_PASSWORD = "Eps@2026";
+
+  window.mlcOpenAdmin = function(){
+    const modal=document.getElementById("adminModal");
+    const input=document.getElementById("adminPassword");
+    const err=document.getElementById("adminError");
+    if(!modal) return;
+    modal.classList.remove("hidden");
+    if(err) err.textContent="";
+    if(input){ input.value=""; setTimeout(()=>input.focus(),80); }
+  };
+
+  window.mlcCloseAdmin = function(){
+    const modal=document.getElementById("adminModal");
+    const err=document.getElementById("adminError");
+    if(modal) modal.classList.add("hidden");
+    if(err) err.textContent="";
+  };
+
+  function esc(v){
+    return String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  }
+
+  function formatExamTime(seconds){
+    seconds=Math.max(0,Number(seconds)||0);
+    return Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
+  }
+
+  function renderAdmin(){
+    const results=JSON.parse(localStorage.getItem("mlc_results")||"[]");
+    const stats=document.getElementById("stats");
+    const table=document.getElementById("adminTableWrap");
+    if(!stats || !table) return;
+
+    const total=results.length;
+    const passed=results.filter(r=>Number(r.score)>=6).length;
+    const avg=total ? (results.reduce((s,r)=>s+Number(r.score||0),0)/total).toFixed(1) : "0.0";
+    const high=total ? Math.max(...results.map(r=>Number(r.score||0))) : 0;
+
+    stats.innerHTML=
+      '<div class="stat"><span>TOTAL TESTS</span><strong>'+total+'</strong></div>'+
+      '<div class="stat"><span>PASSED (6+)</span><strong>'+passed+'</strong></div>'+
+      '<div class="stat"><span>AVERAGE</span><strong>'+avg+'</strong></div>'+
+      '<div class="stat"><span>HIGHEST</span><strong>'+high+'/10</strong></div>';
+
+    if(!total){
+      table.innerHTML='<div class="empty-state">এখনও কোনো পরীক্ষার ফলাফল নেই।</div>';
+      return;
+    }
+
+    table.innerHTML=
+      '<table class="result-table"><thead><tr>'+
+      '<th>STUDENT</th><th>TEST ID</th><th>SCORE</th><th>EXAM TIME</th><th>DATE</th><th>STATUS</th>'+
+      '</tr></thead><tbody>'+
+      results.map(r=>{
+        const score=Number(r.score||0);
+        const cls=score>=9?"score-good":score>=6?"score-mid":"score-low";
+        const date=r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "—";
+        return '<tr>'+
+          '<td><strong>'+esc(r.name)+'</strong></td>'+
+          '<td>'+esc(r.id)+'</td>'+
+          '<td class="'+cls+'"><strong>'+score+'/10</strong></td>'+
+          '<td>'+formatExamTime(r.time)+'</td>'+
+          '<td>'+esc(date)+'</td>'+
+          '<td><span class="status-pill">'+(score>=6?"Passed":"Needs Practice")+'</span></td>'+
+        '</tr>';
+      }).join("")+
+      '</tbody></table>';
+  }
+
+  window.mlcAdminLogin = function(){
+    const input=document.getElementById("adminPassword");
+    const err=document.getElementById("adminError");
+    const pass=(input?.value||"").trim();
+
+    if(pass!==ADMIN_PASSWORD){
+      if(err) err.textContent="Incorrect password.";
+      if(input){ input.focus(); input.select(); }
+      return;
+    }
+
+    if(input) input.value="";
+    document.getElementById("adminModal")?.classList.add("hidden");
+
+    // Hide all app views and show admin view without depending on app.js.
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("adminView")?.classList.add("active");
+    renderAdmin();
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+
+  window.mlcAdminLogout = function(){
+    document.getElementById("adminView")?.classList.remove("active");
+    document.getElementById("welcomeView")?.classList.add("active");
+  };
+
+  window.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){
+      const modal=document.getElementById("adminModal");
+      if(modal && !modal.classList.contains("hidden")) mlcCloseAdmin();
+    }
+  });
+})();
+</script>
+
+
+<script>
+(function () {
+  "use strict";
+
+  const ADMIN_PASSWORD = "Eps@2026";
+
+  function byId(id) { return document.getElementById(id); }
+
+  function hideViews() {
+    document.querySelectorAll(".view").forEach(function(v){ v.style.display = "none"; });
+  }
+
+  window.mlcOpenAdmin = function () {
+    const modal = byId("adminModal") || byId("admin-modal");
+    if (modal) {
+      modal.style.display = "flex";
+      modal.classList.add("active");
+      const input = modal.querySelector('input[type="password"]');
+      if (input) { input.value = ""; setTimeout(function(){ input.focus(); }, 50); }
+      return false;
+    }
+    // Fallback: show password prompt if the modal is missing.
+    const p = window.prompt("Admin Password");
+    if (p === ADMIN_PASSWORD) window.mlcShowDashboard();
+    else if (p !== null) window.alert("Incorrect password.");
+    return false;
+  };
+
+  window.mlcCloseAdmin = function () {
+    const modal = byId("adminModal") || byId("admin-modal");
+    if (modal) {
+      modal.style.display = "none";
+      modal.classList.remove("active");
+    }
+    return false;
+  };
+
+  window.mlcAdminLogin = function () {
+    const modal = byId("adminModal") || byId("admin-modal");
+    let input = modal ? modal.querySelector('input[type="password"]') : null;
+    if (!input) input = byId("adminPassword") || byId("admin-password");
+    const password = input ? input.value : "";
+
+    if (password !== ADMIN_PASSWORD) {
+      if (input) {
+        input.value = "";
+        input.focus();
+      }
+      window.alert("Incorrect password.");
+      return false;
+    }
+
+    window.mlcCloseAdmin();
+    window.mlcShowDashboard();
+    return false;
+  };
+
+  window.mlcShowDashboard = function () {
+    hideViews();
+    const admin = byId("adminView") || byId("admin-view");
+    if (admin) {
+      admin.style.display = "block";
+      admin.classList.add("active");
+    }
+    try {
+      if (typeof window.renderAdminDashboard === "function") {
+        window.renderAdminDashboard();
+      } else if (typeof window.renderAdmin === "function") {
+        window.renderAdmin();
+      } else if (typeof window.loadAdminResults === "function") {
+        window.loadAdminResults();
+      }
+    } catch (e) {
+      console.error("Admin render error:", e);
+    }
+    return false;
+  };
+
+  window.mlcAdminLogout = function () {
+    hideViews();
+    const welcome =
+      byId("welcomeView") ||
+      byId("welcome-view") ||
+      document.querySelector(".view");
+    if (welcome) {
+      welcome.style.display = "flex";
+      welcome.classList.add("active");
+    }
+    return false;
+  };
+
+  // Keyboard support: Enter submits password, Escape closes modal.
+  document.addEventListener("keydown", function(e) {
+    const modal = byId("adminModal") || byId("admin-modal");
+    if (!modal) return;
+    if (e.key === "Escape") window.mlcCloseAdmin();
+    if (e.key === "Enter" && modal.style.display !== "none") {
+      const active = document.activeElement;
+      if (active && active.matches && active.matches('input[type="password"]')) {
+        e.preventDefault();
+        window.mlcAdminLogin();
+      }
+    }
+  });
+
+  // Capture clicks even if another script later replaces handlers.
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest && e.target.closest("#mlc-admin-btn");
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.mlcOpenAdmin();
+    }
+  }, true);
+})();
+</script>
+
+</body>
+</html>
