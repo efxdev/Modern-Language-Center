@@ -85,6 +85,21 @@ function renderQuestion(){
   });
   $("nextBtn").disabled=true;
 }
+function startExam(){
+  if(state.timerId)clearInterval(state.timerId);
+  state.testId=makeTestId();
+  state.set=buildSet();
+  state.index=0;
+  state.score=0;
+  state.answers=[];
+  state.startAt=Date.now();
+  state.endAt=0;
+  state.remaining=300;
+  renderQuestion();
+  showView("examView");
+  updateTimer();
+  state.timerId=setInterval(updateTimer,1000);
+}
 function updateTimer(){
   state.remaining=Math.max(0,300-Math.floor((Date.now()-state.startAt)/1000));
   $("timer").textContent=formatTime(state.remaining);
