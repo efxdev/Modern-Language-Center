@@ -23,7 +23,7 @@
     <label class="field-label" for="studentName">학생 이름 · শিক্ষার্থীর নাম</label>
     <input id="studentName" class="name-input" maxlength="32" autocomplete="name" placeholder="আপনার নাম লিখুন / 이름을 입력하세요">
     <button id="startBtn" class="primary-btn" disabled><span>시험 시작하기</span><small>পরীক্ষা শুরু করুন</small><b>→</b></button>
-    <button type="button" id="mlc-admin-btn" onclick="window.mlcOpenAdmin && window.mlcOpenAdmin(); return false;">관리자 패널 · Admin Panel</button>
+    <button type="button" id="mlc-admin-btn" class="admin-link" onclick="window.mlcOpenAdmin(); return false;">관리자 패널 · Admin Panel</button>
     <div class="footer-note">Designed &amp; Developed by <strong>MAHAMUD EFX</strong></div>
   </div>
 </section>
@@ -83,228 +83,78 @@
 
 <script>
 (function(){
-  const ADMIN_PASSWORD = "Eps@2026";
-
-  window.mlcOpenAdmin = function(){
-    const modal=document.getElementById("adminModal");
-    const input=document.getElementById("adminPassword");
-    const err=document.getElementById("adminError");
-    if(!modal) return;
-    modal.classList.remove("hidden");
-    if(err) err.textContent="";
-    if(input){ input.value=""; setTimeout(()=>input.focus(),80); }
-  };
-
-  window.mlcCloseAdmin = function(){
-    const modal=document.getElementById("adminModal");
-    const err=document.getElementById("adminError");
-    if(modal) modal.classList.add("hidden");
-    if(err) err.textContent="";
-  };
-
-  function esc(v){
-    return String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  'use strict';
+  const ADMIN_PASSWORD='Eps@2026';
+  const RESULT_KEY='mlc_results';
+  const LEGACY_KEYS=['mlc_results','mlc_exam_results','modern_language_center_results'];
+  const $=id=>document.getElementById(id);
+  const views=['welcomeView','instructionView','examView','resultView','adminView'];
+  function hideViews(){views.forEach(id=>{const el=$(id); if(el) el.classList.remove('active');});}
+  function showAdmin(){hideViews(); const el=$('adminView'); if(el){el.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});} renderAdmin();}
+  function readResults(){
+    const map=new Map();
+    for(const key of LEGACY_KEYS){
+      try{
+        const arr=JSON.parse(localStorage.getItem(key)||'[]');
+        if(Array.isArray(arr)) for(const r of arr){
+          if(!r || typeof r!=='object') continue;
+          const id=String(r.id||'');
+          const sig=id || JSON.stringify(r);
+          if(!map.has(sig)) map.set(sig,r);
+        }
+      }catch(e){console.warn('Could not read',key,e);}
+    }
+    return [...map.values()].sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0));
   }
-
-  function formatExamTime(seconds){
-    seconds=Math.max(0,Number(seconds)||0);
-    return Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
-  }
-
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+  function time(v){const s=Math.max(0,Math.round(Number(v)||0)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
   function renderAdmin(){
-    const results=JSON.parse(localStorage.getItem("mlc_results")||"[]");
-    const stats=document.getElementById("stats");
-    const table=document.getElementById("adminTableWrap");
-    if(!stats || !table) return;
-
-    const total=results.length;
-    const passed=results.filter(r=>Number(r.score)>=6).length;
-    const avg=total ? (results.reduce((s,r)=>s+Number(r.score||0),0)/total).toFixed(1) : "0.0";
-    const high=total ? Math.max(...results.map(r=>Number(r.score||0))) : 0;
-
-    stats.innerHTML=
-      '<div class="stat"><span>TOTAL TESTS</span><strong>'+total+'</strong></div>'+
-      '<div class="stat"><span>PASSED (6+)</span><strong>'+passed+'</strong></div>'+
-      '<div class="stat"><span>AVERAGE</span><strong>'+avg+'</strong></div>'+
-      '<div class="stat"><span>HIGHEST</span><strong>'+high+'/10</strong></div>';
-
-    if(!total){
-      table.innerHTML='<div class="empty-state">এখনও কোনো পরীক্ষার ফলাফল নেই।</div>';
+    const stats=$('stats'), table=$('adminTableWrap'), search=$('resultSearch');
+    if(!stats||!table)return;
+    let rows=readResults();
+    const term=(search?.value||'').trim().toLowerCase();
+    if(term) rows=rows.filter(r=>`${r.name||''} ${r.id||''}`.toLowerCase().includes(term));
+    const total=rows.length, passed=rows.filter(r=>Number(r.score)>=6).length;
+    const avg=total?(rows.reduce((a,r)=>a+Number(r.score||0),0)/total).toFixed(1):'0.0';
+    const high=total?Math.max(...rows.map(r=>Number(r.score||0))):0;
+    stats.innerHTML=`<div class="stat"><span>TOTAL TESTS</span><strong>${total}</strong></div><div class="stat"><span>PASSED (6+)</span><strong>${passed}</strong></div><div class="stat"><span>AVERAGE</span><strong>${avg}</strong></div><div class="stat"><span>HIGHEST</span><strong>${high}/10</strong></div>`;
+    if(!rows.length){
+      table.innerHTML='<div class="empty-state"><strong>কোনো পরীক্ষার তথ্য পাওয়া যায়নি।</strong><br><span>এই একই ব্রাউজারে একটি পরীক্ষা সম্পূর্ণ করে আবার Admin Panel খুলুন।</span></div>';
       return;
     }
-
-    table.innerHTML=
-      '<table class="result-table"><thead><tr>'+
-      '<th>STUDENT</th><th>TEST ID</th><th>SCORE</th><th>EXAM TIME</th><th>DATE</th><th>STATUS</th>'+
-      '</tr></thead><tbody>'+
-      results.map(r=>{
-        const score=Number(r.score||0);
-        const cls=score>=9?"score-good":score>=6?"score-mid":"score-low";
-        const date=r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "—";
-        return '<tr>'+
-          '<td><strong>'+esc(r.name)+'</strong></td>'+
-          '<td>'+esc(r.id)+'</td>'+
-          '<td class="'+cls+'"><strong>'+score+'/10</strong></td>'+
-          '<td>'+formatExamTime(r.time)+'</td>'+
-          '<td>'+esc(date)+'</td>'+
-          '<td><span class="status-pill">'+(score>=6?"Passed":"Needs Practice")+'</span></td>'+
-        '</tr>';
-      }).join("")+
-      '</tbody></table>';
+    table.innerHTML=`<table class="result-table"><thead><tr><th>STUDENT</th><th>TEST ID</th><th>SCORE</th><th>EXAM TIME</th><th>DATE</th><th>STATUS</th></tr></thead><tbody>${rows.map(r=>{
+      const score=Number(r.score||0), cls=score>=9?'score-good':score>=6?'score-mid':'score-low';
+      const date=r.submittedAt?new Date(r.submittedAt).toLocaleString():'—';
+      return `<tr><td><strong>${esc(r.name)}</strong></td><td>${esc(r.id)}</td><td class="${cls}"><strong>${score}/10</strong></td><td>${time(r.time)}</td><td>${esc(date)}</td><td><span class="status-pill">${score>=6?'Passed':'Needs Practice'}</span></td></tr>`;
+    }).join('')}</tbody></table>`;
   }
-
-  window.mlcAdminLogin = function(){
-    const input=document.getElementById("adminPassword");
-    const err=document.getElementById("adminError");
-    const pass=(input?.value||"").trim();
-
-    if(pass!==ADMIN_PASSWORD){
-      if(err) err.textContent="Incorrect password.";
-      if(input){ input.focus(); input.select(); }
-      return;
-    }
-
-    if(input) input.value="";
-    document.getElementById("adminModal")?.classList.add("hidden");
-
-    // Hide all app views and show admin view without depending on app.js.
-    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
-    document.getElementById("adminView")?.classList.add("active");
-    renderAdmin();
-    window.scrollTo({top:0,behavior:"smooth"});
+  window.mlcOpenAdmin=function(){
+    const modal=$('adminModal'), input=$('adminPassword'), err=$('adminError');
+    if(!modal)return;
+    modal.classList.remove('hidden');
+    if(err)err.textContent='';
+    if(input){input.value='';setTimeout(()=>input.focus(),80);}
+    return false;
   };
-
-  window.mlcAdminLogout = function(){
-    document.getElementById("adminView")?.classList.remove("active");
-    document.getElementById("welcomeView")?.classList.add("active");
+  window.mlcCloseAdmin=function(){const m=$('adminModal'); if(m)m.classList.add('hidden'); const e=$('adminError'); if(e)e.textContent=''; return false;};
+  window.mlcAdminLogin=function(){
+    const input=$('adminPassword'), err=$('adminError'), pass=(input?.value||'').trim();
+    if(pass!==ADMIN_PASSWORD){if(err)err.textContent='Incorrect password.'; if(input){input.select();input.focus();} return false;}
+    if(input)input.value=''; window.mlcCloseAdmin(); showAdmin(); return false;
   };
-
-  window.addEventListener("keydown",function(e){
-    if(e.key==="Escape"){
-      const modal=document.getElementById("adminModal");
-      if(modal && !modal.classList.contains("hidden")) mlcCloseAdmin();
-    }
+  window.mlcAdminLogout=function(){hideViews(); const w=$('welcomeView'); if(w)w.classList.add('active'); return false;};
+  window.mlcRefreshAdmin=function(){renderAdmin(); return false;};
+  document.addEventListener('keydown',e=>{
+    const modal=$('adminModal');
+    if(e.key==='Escape' && modal && !modal.classList.contains('hidden')) window.mlcCloseAdmin();
+    if(e.key==='Enter' && modal && !modal.classList.contains('hidden') && document.activeElement===$('adminPassword')){e.preventDefault();window.mlcAdminLogin();}
+  });
+  document.addEventListener('DOMContentLoaded',()=>{
+    $('adminRefresh')?.addEventListener('click',window.mlcRefreshAdmin);
+    $('resultSearch')?.addEventListener('input',renderAdmin);
+    window.addEventListener('storage',e=>{if(LEGACY_KEYS.includes(e.key)) renderAdmin();});
   });
 })();
 </script>
-
-
-<script>
-(function () {
-  "use strict";
-
-  const ADMIN_PASSWORD = "Eps@2026";
-
-  function byId(id) { return document.getElementById(id); }
-
-  function hideViews() {
-    document.querySelectorAll(".view").forEach(function(v){ v.style.display = "none"; });
-  }
-
-  window.mlcOpenAdmin = function () {
-    const modal = byId("adminModal") || byId("admin-modal");
-    if (modal) {
-      modal.style.display = "flex";
-      modal.classList.add("active");
-      const input = modal.querySelector('input[type="password"]');
-      if (input) { input.value = ""; setTimeout(function(){ input.focus(); }, 50); }
-      return false;
-    }
-    // Fallback: show password prompt if the modal is missing.
-    const p = window.prompt("Admin Password");
-    if (p === ADMIN_PASSWORD) window.mlcShowDashboard();
-    else if (p !== null) window.alert("Incorrect password.");
-    return false;
-  };
-
-  window.mlcCloseAdmin = function () {
-    const modal = byId("adminModal") || byId("admin-modal");
-    if (modal) {
-      modal.style.display = "none";
-      modal.classList.remove("active");
-    }
-    return false;
-  };
-
-  window.mlcAdminLogin = function () {
-    const modal = byId("adminModal") || byId("admin-modal");
-    let input = modal ? modal.querySelector('input[type="password"]') : null;
-    if (!input) input = byId("adminPassword") || byId("admin-password");
-    const password = input ? input.value : "";
-
-    if (password !== ADMIN_PASSWORD) {
-      if (input) {
-        input.value = "";
-        input.focus();
-      }
-      window.alert("Incorrect password.");
-      return false;
-    }
-
-    window.mlcCloseAdmin();
-    window.mlcShowDashboard();
-    return false;
-  };
-
-  window.mlcShowDashboard = function () {
-    hideViews();
-    const admin = byId("adminView") || byId("admin-view");
-    if (admin) {
-      admin.style.display = "block";
-      admin.classList.add("active");
-    }
-    try {
-      if (typeof window.renderAdminDashboard === "function") {
-        window.renderAdminDashboard();
-      } else if (typeof window.renderAdmin === "function") {
-        window.renderAdmin();
-      } else if (typeof window.loadAdminResults === "function") {
-        window.loadAdminResults();
-      }
-    } catch (e) {
-      console.error("Admin render error:", e);
-    }
-    return false;
-  };
-
-  window.mlcAdminLogout = function () {
-    hideViews();
-    const welcome =
-      byId("welcomeView") ||
-      byId("welcome-view") ||
-      document.querySelector(".view");
-    if (welcome) {
-      welcome.style.display = "flex";
-      welcome.classList.add("active");
-    }
-    return false;
-  };
-
-  // Keyboard support: Enter submits password, Escape closes modal.
-  document.addEventListener("keydown", function(e) {
-    const modal = byId("adminModal") || byId("admin-modal");
-    if (!modal) return;
-    if (e.key === "Escape") window.mlcCloseAdmin();
-    if (e.key === "Enter" && modal.style.display !== "none") {
-      const active = document.activeElement;
-      if (active && active.matches && active.matches('input[type="password"]')) {
-        e.preventDefault();
-        window.mlcAdminLogin();
-      }
-    }
-  });
-
-  // Capture clicks even if another script later replaces handlers.
-  document.addEventListener("click", function(e) {
-    const btn = e.target.closest && e.target.closest("#mlc-admin-btn");
-    if (btn) {
-      e.preventDefault();
-      e.stopPropagation();
-      window.mlcOpenAdmin();
-    }
-  }, true);
-})();
-</script>
-
 </body>
 </html>

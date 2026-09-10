@@ -93,3 +93,6 @@ GitHub flow:
 **Admin Panel → Password `Eps@2026` → Admin Dashboard**
 
 This is intentionally isolated for reliable static-hosting testing.
+
+
+Admin FIX: one isolated admin implementation; result records are persisted in localStorage under mlc_results and mirrored as mlc_last_result for GitHub testing. Production cross-device results still require Firebase/Firestore.

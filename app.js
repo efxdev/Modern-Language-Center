@@ -60,7 +60,13 @@ function startExam(){state.testId=makeTestId();state.set=buildSet();state.index=
 async function saveResultToCloud(result){
   return false;
 }
-function saveLocalResult(result){const a=JSON.parse(localStorage.getItem("mlc_results")||"[]");a.unshift(result);localStorage.setItem("mlc_results",JSON.stringify(a.slice(0,200)))}
+function saveLocalResult(result){
+  const a=JSON.parse(localStorage.getItem("mlc_results")||"[]");
+  a.unshift(result);
+  const clean=a.filter((r,i,arr)=>r&&(!r.id||arr.findIndex(x=>x&&x.id===r.id)===i)).slice(0,200);
+  localStorage.setItem("mlc_results",JSON.stringify(clean));
+  localStorage.setItem("mlc_last_result",JSON.stringify(result));
+}
 async function finishExam(auto=false){
   if(state.endAt)return;state.endAt=Date.now();clearInterval(state.timerId);
   state.score=state.set.reduce((s,q,i)=>s+(state.answers[i]===q.answer?1:0),0);
@@ -79,44 +85,8 @@ async function initFirebase(){
   // Firebase is optional during GitHub testing. Do not load it on page startup.
   return;
 }
-window.adminLogin=function(){
-  const input=$("adminPassword");
-  const error=$("adminError");
-  const pass=(input.value||"").trim();
-  error.textContent="";
-  if(!pass){error.textContent="Please enter the admin password.";input.focus();return;}
-  if(pass!==ADMIN_PREVIEW_PASSWORD){error.textContent="Incorrect password.";input.select();return;}
-  input.value="";
-  $("adminModal").classList.add("hidden");
-  showView("adminView");
-  loadLocalAdmin();
-};
-function loadLocalAdmin(){renderAdmin(JSON.parse(localStorage.getItem("mlc_results")||"[]"))}
-function renderAdmin(rows){
-  const term=$("resultSearch").value.trim().toLowerCase();if(term)rows=rows.filter(r=>`${r.name} ${r.id}`.toLowerCase().includes(term));
-  const total=rows.length,passed=rows.filter(r=>r.score>=6).length,avg=total?(rows.reduce((a,r)=>a+r.score,0)/total).toFixed(1):"0.0",high=total?Math.max(...rows.map(r=>r.score)):0;
-  $("stats").innerHTML=`<div class="stat"><span>TOTAL TESTS</span><strong>${total}</strong></div><div class="stat"><span>PASSED (6+)</span><strong>${passed}</strong></div><div class="stat"><span>AVERAGE</span><strong>${avg}</strong></div><div class="stat"><span>HIGHEST</span><strong>${high}/10</strong></div>`;
-  if(!rows.length){$("adminTableWrap").innerHTML='<div class="empty-state">কোনো result পাওয়া যায়নি।</div>';return}
-  $("adminTableWrap").innerHTML=`<table class="result-table"><thead><tr><th>STUDENT</th><th>TEST ID</th><th>SCORE</th><th>TIME</th><th>DATE</th><th>STATUS</th></tr></thead><tbody>${rows.map(r=>{const cls=r.score>=9?"score-good":r.score>=6?"score-mid":"score-low";return `<tr><td><strong>${esc(r.name)}</strong></td><td>${esc(r.id)}</td><td class="${cls}"><strong>${r.score}/10</strong></td><td>${formatTime(r.time)}</td><td>${new Date(r.submittedAt).toLocaleString()}</td><td><span class="status-pill">${r.score>=6?"Passed":"Needs Practice"}</span></td></tr>`}).join("")}</tbody></table>`
-}
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-
 $("studentName").addEventListener("input",e=>{$("startBtn").disabled=e.target.value.trim().length<2;state.studentName=e.target.value.trim()});
 $("startBtn").onclick=()=>showView("instructionView");$("readyBtn").onclick=startExam;$("nextBtn").onclick=()=>state.index===9?finishExam(false):(state.index++,renderQuestion());
-$("restartBtn").onclick=()=>{document.body.classList.remove("celebrate");$("studentName").value="";$("startBtn").disabled=true;showView("welcomeView")};
-window.openAdminPanel=function(){
-  $("adminModal").classList.remove("hidden");
-  $("adminError").textContent="";
-  $("adminPassword").value="";
-  setTimeout(()=>$("adminPassword").focus(),50);
-};
-window.closeAdminPanel=function(){
-  $("adminModal").classList.add("hidden");
-  $("adminError").textContent="";
-};
-
-$("adminRefresh").onclick=loadLocalAdmin;$("resultSearch").oninput=loadLocalAdmin;
-$("adminLogout").onclick=()=>showView("welcomeView");
 $("stayBtn").onclick=()=>$("exitModal").classList.add("hidden");$("leaveBtn").onclick=()=>{$("exitModal").classList.add("hidden");clearInterval(state.timerId);state.endAt=Date.now();showView("welcomeView")};
 let allowExit=false;window.addEventListener("beforeunload",e=>{if($("examView").classList.contains("active")&&!allowExit){e.preventDefault();e.returnValue=""}});history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{if($("examView").classList.contains("active")){history.pushState(null,"",location.href);$("exitModal").classList.remove("hidden")}});
 
