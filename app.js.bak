@@ -1,8 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getAuth,
-  initializeAuth,
-  indexedDBLocalPersistence,
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
@@ -121,10 +119,6 @@ async function initFirebase(){
     state.firebase=initializeApp(firebaseConfig);
     state.auth=getAuth(state.firebase);
     state.db=getFirestore(state.firebase);
-    // Keep student (anonymous) and admin (email/password) sessions completely separate.
-    state.adminFirebase=initializeApp(firebaseConfig,"mlc-admin");
-    state.adminAuth=getAuth(state.adminFirebase);
-    state.adminDb=getFirestore(state.adminFirebase);
     onAuthStateChanged(state.auth,user=>{state.currentUser=user;state.authReady=true;});
     await ensureAnonymousAuth();
   }catch(error){console.error("Firebase init failed",error);toast("Firebase connection failed. Local mode is active.");}
@@ -192,10 +186,9 @@ function renderAdminTable(){
   table.querySelectorAll(".admin-delete-btn").forEach(b=>b.addEventListener("click",()=>deleteAdminResult(b.dataset.id)));
 }
 async function loadAdminResults(){
-  const adminDb=state.adminDb||state.db;
-  if(!adminDb){state.adminResults=readLocalResults();renderAdminTable();return;}
+  if(!state.db){state.adminResults=readLocalResults();renderAdminTable();return;}
   try{
-    const snap=await getDocs(query(collection(adminDb,"examResults"),orderBy("submittedAt","desc")));
+    const snap=await getDocs(query(collection(state.db,"examResults"),orderBy("submittedAt","desc")));
     state.adminResults=snap.docs.map(d=>({docId:d.id,...d.data()}));renderAdminTable();
   }catch(error){console.error("Admin result load failed",error);state.adminResults=[];renderAdminTable();toast("Could not load Firestore results. Check Admin authentication and rules.");}
 }
@@ -211,16 +204,16 @@ async function saveAdminEdit(){
   if(!Number.isInteger(score)||score<0||score>10){toast("Score must be between 0 and 10.");return;}
   if(time<0||time>300){toast("EXAM TIME must be between 0:00 and 5:00.");return;}
   try{
-    await updateDoc(doc(state.adminDb||state.db,"examResults",id),{name,score,total:10,time,passed:score>=6});
+    await updateDoc(doc(state.db,"examResults",id),{name,score,total:10,time,passed:score>=6});
     closeEditModal();await loadAdminResults();toast("Exam result updated.");
   }catch(error){console.error(error);toast("Update failed. Please try again.");}
 }
 async function deleteAdminResult(id){
-  if(!id||!(state.adminDb||state.db))return;
+  if(!id||!state.db)return;
   const r=state.adminResults.find(x=>x.docId===id);if(!r)return;
   const label=r.testId||r.name||id;
   if(!window.confirm(`Delete this exam result?\n\n${label}\n\nThis cannot be undone.`))return;
-  try{await deleteDoc(doc(state.adminDb||state.db,"examResults",id));await loadAdminResults();toast("Exam result deleted.");}
+  try{await deleteDoc(doc(state.db,"examResults",id));await loadAdminResults();toast("Exam result deleted.");}
   catch(error){console.error(error);toast("Delete failed. Please try again.");}
 }
 window.mlcOpenAdmin=function(){
@@ -231,15 +224,15 @@ window.mlcCloseAdmin=function(){$("adminModal")?.classList.add("hidden");if($("a
 window.mlcAdminLogin=async function(){
   const input=$("adminPassword"),err=$("adminError"),pass=(input?.value||"").trim();
   if(!pass){if(err)err.textContent="Password required.";return false;}
-  if(!state.adminAuth){if(err)err.textContent="Firebase is not ready.";return false;}
+  if(!state.auth){if(err)err.textContent="Firebase is not ready.";return false;}
   try{
-    const cred=await signInWithEmailAndPassword(state.adminAuth,ADMIN_EMAIL,pass);
+    const cred=await signInWithEmailAndPassword(state.auth,ADMIN_EMAIL,pass);
     if(!cred.user.email||cred.user.email.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){throw new Error("Not an admin account");}
     state.admin=true;state.currentUser=cred.user;if(input)input.value="";window.mlcCloseAdmin();showView("adminView");await loadAdminResults();return false;
   }catch(error){console.error(error);if(err)err.textContent="Incorrect admin password or Admin account is not configured.";if(input){input.select();input.focus();}return false;}
 };
 window.mlcAdminLogout=async function(){
-  try{if(state.adminAuth)await signOut(state.adminAuth);}catch(e){console.error(e);}state.admin=false;state.adminResults=[];await ensureAnonymousAuth();showView("welcomeView");return false;
+  try{if(state.auth)await signOut(state.auth);}catch(e){console.error(e);}state.admin=false;state.adminResults=[];await ensureAnonymousAuth();showView("welcomeView");return false;
 };
 window.mlcRefreshAdmin=()=>loadAdminResults();
 
