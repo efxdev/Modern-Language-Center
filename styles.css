@@ -37,3 +37,4 @@
 #mlc-admin-btn:hover{transform:translateY(-2px);background:rgba(98,119,255,.10);border-color:rgba(126,145,255,.55);color:#eef1ff;box-shadow:0 12px 30px rgba(60,75,180,.18)}
 #mlc-admin-btn:active{transform:translateY(0)}
 .empty-state span{display:block;margin-top:8px;color:#66728b}
+.admin-actions{white-space:nowrap}.admin-actions .secondary-btn,.admin-actions .danger-btn{padding:7px 9px;margin-right:5px;font-size:10px}.edit-card{text-align:left}.edit-card h3{text-align:center}.edit-card>p{text-align:center}.edit-label{display:block;margin:13px 0 6px;font-size:10px;font-weight:700;color:#9da8bf;letter-spacing:.05em}.edit-card .name-input{margin:0}.edit-card .primary-btn{margin-top:0}.edit-card .modal-actions{align-items:center}.edit-card .secondary-btn{width:100%}

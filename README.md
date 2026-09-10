@@ -1,98 +1,62 @@
-# Modern Language Center — Firebase-ready Korean Class Test
+# Modern Language Center — Korean Test + Firebase
 
-## What changed
+## Final build
 
-- Student still needs only a name; no student account.
-- Admin entry is a discreet `Admin` button.
-- Admin UI asks only for a password.
-- Behind the scenes, the password is handled by Firebase Authentication.
-- Teacher results are designed to live in Firestore.
-- GitHub preview works without Firebase by using local browser results.
-- Same project can be deployed to Firebase Hosting, Cloudflare Pages, or GitHub Pages.
-- Test ID starts with the student's name, e.g. `MAHAMUD-MLC-260910-001`.
+This package is based on the existing `Modern_Language_Center_Korean_Test_Admin_FINAL.zip` and keeps the existing student exam UI/flow. Firebase is connected for cross-device result storage.
 
-## Important security note
+### Student flow
+- No visible student login.
+- Firebase Anonymous Authentication runs in the background.
+- 10 questions / 5 minutes / sequential one-way flow.
+- Result shows actual `EXAM TIME` in `M:SS`.
 
-Do NOT hard-code an admin password in `app.js` or `firebase-config.js`.
-Create a Firebase Authentication Email/Password user for the admin account, using:
-`admin@mlc.local`
-and your private password.
+### Admin flow
+`관리자 패널 · Admin Panel` → password popup → Firebase Authentication → Firestore Admin Dashboard.
 
-For a fully production-grade deployment, result submission should be moved behind a trusted Firebase backend/Cloud Function so an unauthenticated student cannot write directly to Firestore. This package keeps the UI and architecture ready for that step.
+The admin can view, **edit**, and **delete** past exam results. Edit supports Student Name, Score, and EXAM TIME. PASS/FAIL is recalculated automatically from the score. Delete requires confirmation.
 
-## Firebase setup
+## Firebase project already connected
 
-1. Create a Firebase project.
-2. Enable Authentication → Sign-in method → Email/Password.
-3. Create the admin user with email `admin@mlc.local` and your private password.
-4. Create a Firestore database.
-5. Copy the Firebase Web App config into `firebase-config.js`.
-6. Replace `YOUR_FIREBASE_PROJECT_ID` in `.firebaserc`.
-7. Deploy Hosting and Firestore rules.
+- Project ID: `mlc-korean`
+- Web app: `MLC Korean Test`
+- Firestore database: `(default)`
+- Authentication: Anonymous enabled
 
-## GitHub test
+Firebase Web configuration is stored in `firebase-config.js`. The Firebase web API key is not an admin secret; Firestore Rules and Authentication provide access control.
 
-You can upload the same project to GitHub. Static pages run normally.
-If Firebase config is still placeholder, exam results are kept only in the current browser for preview.
+## One required Admin setup in Firebase Console
 
-## Recommended final security step
+The Admin Panel does **not** keep the admin password in JavaScript. The password is handled by Firebase Authentication.
 
-Before public production use, add a Firebase Cloud Function (or another trusted server endpoint) that accepts a signed/validated test submission and writes to Firestore. This prevents students from manipulating Firestore writes from browser developer tools.
+1. Firebase Console → **Authentication** → **Sign-in method**.
+2. Enable **Email/Password** and save.
+3. Open **Authentication → Users**.
+4. Add a new user:
+   - Email: `admin@mlc.local`
+   - Password: `Eps@2026`
+5. The website Admin Panel will use that account behind the existing password popup.
 
+Students continue using Anonymous Authentication and never see an account/login screen.
 
-## Result screen update
-- Removed Print, Save, and Retake buttons from the student result screen.
-- The time value is displayed in Bangla, e.g. `০ মিনিট ৫ সেকেন্ড`.
+## Firestore collection
 
+The website creates:
 
-## How the teacher/admin enters
+`examResults/{autoDocumentId}`
 
-On the very bottom of the student home screen there is a discreet **관리자 패널 · Admin Panel** button.
+Each result contains `uid`, `name`, `score`, `total`, `time`, `passed`, `submittedAt`, `autoSubmitted`, and `testId`.
 
-1. Teacher taps **관리자 패널 · Admin Panel**.
-2. A password popup appears.
-3. Teacher enters the private admin password.
-4. If Firebase is configured and the Firebase Authentication admin account is valid, the Admin Dashboard opens.
-5. Students do not need an account or login.
+## Security model
 
-The admin email is kept as an internal Firebase Authentication identifier (`admin@mlc.local` in the template); students never see or use it.
+- Anonymous students: create-only result submission.
+- Students: cannot read, update, or delete past results.
+- Admin account `admin@mlc.local`: can read, update, and delete `examResults`.
+- Firestore is not left in test/open mode.
 
+The deployed rules are in `firestore.rules`.
 
-## Owner-supplied admin password
+## GitHub Pages
 
-The requested GitHub preview password is set to `Eps@2026`.
+The project is static and GitHub Pages compatible. Upload the project files to the repository root and enable GitHub Pages from the repository's Pages settings.
 
-**Security note:** a password embedded in client-side JavaScript can be discovered from the browser source. This is therefore for the private/testing phase only. Before public production, use Firebase Authentication with a private password and remove the preview password from the client.
-
-
-## v7 fixes
-
-- Result card now shows `EXAM TIME` with English `M:SS` format, e.g. `3:40`.
-- Admin Panel is a refined dark pill at the bottom of the home card.
-- Admin Panel works in GitHub/static preview without requiring Firebase to load first.
-- Password `Eps@2026` opens the Admin Dashboard in preview mode.
-- Firebase SDKs are loaded only when a real Firebase config is present, preventing GitHub preview from breaking when Firebase is not configured.
-
-
-## v8 — Admin access reliability fix
-
-The Admin Panel trigger is now a direct button action and does not depend on Firebase or ES-module loading. On GitHub Pages:
-
-**Admin Panel → Password → Admin Dashboard**
-
-Password: `Eps@2026`
-
-This guarantees the password popup can open during static GitHub testing. Firebase integration can be connected after the Firebase project is configured.
-
-
-## v9 — Admin panel is fully independent
-
-The Admin Panel is now controlled by an inline script in `index.html`, so it does not depend on Firebase, ES modules, or `app.js` loading correctly.
-
-GitHub flow:
-**Admin Panel → Password `Eps@2026` → Admin Dashboard**
-
-This is intentionally isolated for reliable static-hosting testing.
-
-
-Admin FIX: one isolated admin implementation; result records are persisted in localStorage under mlc_results and mirrored as mlc_last_result for GitHub testing. Production cross-device results still require Firebase/Firestore.
+The included `.firebaserc` points to `mlc-korean`, and `firebase.json` is configured to deploy the Firestore rules as well as Firebase Hosting if Firebase CLI is used.

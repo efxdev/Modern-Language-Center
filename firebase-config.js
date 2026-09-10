@@ -1,15 +1,15 @@
-// Firebase configuration for the final deployment.
-// Replace these values with your Firebase Web App configuration.
-// Do NOT put the admin password here. The password is stored in Firebase Authentication.
+// Firebase Web App configuration for Modern Language Center.
+// Firebase Web API keys are identifiers, not admin secrets. Access is protected
+// by Firebase Authentication and Firestore Security Rules.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDCsmT4MaktpNA5n-4cyU99uZo_RBaXxZfe",
+  authDomain: "mlc-korean.firebaseapp.com",
+  projectId: "mlc-korean",
+  storageBucket: "mlc-korean.firebasestorage.app",
+  messagingSenderId: "346073528895",
+  appId: "1:346073528895:web:6a0eeac30850d8e8f2d68a"
 };
 
-// This is the Firebase Authentication email for the hidden admin account.
-// Students never see this email in the UI.
+// This account is used only for the hidden Admin Panel sign-in.
+// Create this user in Firebase Authentication > Users.
 export const ADMIN_EMAIL = "admin@mlc.local";

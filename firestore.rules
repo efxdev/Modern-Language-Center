@@ -1,12 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "admin@mlc.local"
+        && request.auth.token.firebase.sign_in_provider == "password";
+    }
+
+    function isAnonymousStudent() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == "anonymous";
+    }
+
     match /examResults/{resultId} {
-      // Students do not get direct Firestore access from the browser.
-      // The production build should write results through a trusted backend
-      // or use a carefully designed authenticated submission flow.
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == "admin@mlc.local";
+      // Students may submit a result created by this browser session only.
+      // Students cannot read, update, or delete results.
+      allow create: if isAnonymousStudent()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          "uid", "name", "score", "total", "time",
+          "submittedAt", "autoSubmitted"
+        ])
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 10
+        && request.resource.data.total == 10
+        && request.resource.data.time is int
+        && request.resource.data.time >= 0
+        && request.resource.data.time <= 300
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 32;
+
+      // Only the authenticated Admin account can view, edit, or delete past exams.
+      allow read, update, delete: if isAdmin();
     }
   }
 }
